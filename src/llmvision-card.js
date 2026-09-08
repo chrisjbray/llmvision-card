@@ -280,6 +280,7 @@ class LLMVisionCard extends BaseLLMVisionCard {
     _render(details, hass) {
         this.content.innerHTML = '';
         let lastDate = '';
+        const navEvents = details.map(d => ({ ...d }));
         details.forEach((d, idx) => {
             const dateObj = new Date(d.startTime);
             const dateLabel = this.formatDateLabel(dateObj);
@@ -297,6 +298,7 @@ class LLMVisionCard extends BaseLLMVisionCard {
                 icon = this.default_icon;
             }
             const colorsComputed = this.computeColors(d.category, defaultColor);
+            navEvents[idx].icon = icon;
             const container = document.createElement('div');
             container.classList.add('event-container');
             container.innerHTML = `
@@ -322,7 +324,9 @@ class LLMVisionCard extends BaseLLMVisionCard {
                         label: d.label,
                         icon: icon,
                         prefix: 'popup',
-                        eventId: d.id
+                        eventId: d.id,
+                        events: navEvents,
+                        eventIndex: idx,
                     }, hass);
                 });
             });

@@ -21,6 +21,12 @@ export default defineConfig({
             output: {
                 entryFileNames: "[name].js",
                 format: "es",
+                // ponytail: card-base.js is imported by all entries; without
+                // manualChunks each entry inlines its own stale copy of
+                // showPopup, so a base fix ships in one chunk but not the other
+                manualChunks: (id) => {
+                    if (id.includes('src/card-base.js')) return 'card-base';
+                },
             },
         },
     },

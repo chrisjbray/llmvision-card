@@ -232,8 +232,11 @@ export class BaseLLMVisionCard extends HTMLElement {
         return { bgColorRgba, iconColorRgba };
     }
 
-    showPopup({ event, summary, startTime, keyFrame, cameraName, category, label, icon, prefix, eventId }, hassArg) {
+    showPopup({ event, summary, startTime, keyFrame, cameraName, category, label, icon, prefix, eventId, events, eventIndex }, hassArg) {
         const hass = hassArg || this.hass;
+        // ponytail: index-based nav, not id lookup; the list order is the nav order
+        const navList = Array.isArray(events) ? events : null;
+        let navIndex = Number.isInteger(eventIndex) ? eventIndex : -1;
         const formattedTime = this.formatDateTimeFull(startTime);
         const secondaryText = cameraName ? `${formattedTime} • ${cameraName}` : formattedTime;
         const overlayClass = `${prefix}-overlay`;
@@ -307,6 +310,16 @@ export class BaseLLMVisionCard extends HTMLElement {
                     </div>
                     <img src="${keyFrame}" alt="Event Snapshot" onerror="this.style.display='none'">
                     <p class="summary">${summary}</p>
+                    ${navList && navList.length > 1 ? `
+                    <div class="${prefix}-nav-row">
+                        <button class="${prefix}-nav-btn" data-nav="-1" title="Previous event" aria-label="Previous event">
+                            <ha-icon icon="mdi:chevron-left"></ha-icon>
+                        </button>
+                        <span class="${prefix}-nav-pos">${navIndex + 1} / ${navList.length}</span>
+                        <button class="${prefix}-nav-btn" data-nav="1" title="Next event" aria-label="Next event">
+                            <ha-icon icon="mdi:chevron-right"></ha-icon>
+                        </button>
+                    </div>` : ''}
                 </div>
             `;
 
@@ -433,6 +446,28 @@ export class BaseLLMVisionCard extends HTMLElement {
                         font-family: var(--ha-font-family-body, "Roboto");
                     }
     
+                    /* Nav row */
+                    .${prefix}-nav-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-top: 10px;
+                    }
+                    .${prefix}-nav-btn {
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        color: var(--primary-text-color);
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 30px;
+                    }
+                    .${prefix}-nav-pos {
+                        color: var(--secondary-text-color);
+                        font-size: var(--ha-font-size-m, 14px);
+                    }
+
                     /* Buttons */
                     .${closeBtnClass}, .${menuBtnClass} {
                         background: none;
@@ -535,8 +570,48 @@ export class BaseLLMVisionCard extends HTMLElement {
         overlayEl.addEventListener('click', (ev) => {
             if (ev.target === overlayEl) this.closePopup(wrapper, overlayClass, popstateHandler);
         });
+        // ponytail: key-frame resolves race; only the latest step may open.
+        // Fast steps resolve out of order, which showed two popups at once.
+        let navSeq = 0;
+        const stepNav = (dir) => {
+            if (!navList || navIndex < 0) return;
+            const next = navIndex + dir;
+            if (next < 0 || next >= navList.length) return;
+            const n = navList[next];
+            const seq = ++navSeq;
+            this.resolveKeyFrame(hass, n.keyFrame).then(url => {
+                if (seq !== navSeq) return;
+                // ponytail: remove the old wrapper at once; closePopup waits
+                // for the fade, which stacks a popup per step
+                this._removePopup(wrapper, overlayClass, popstateHandler, escHandler);
+                this.showPopup({
+                    event: n.title,
+                    summary: n.description,
+                    startTime: n.startTime,
+                    keyFrame: url,
+                    cameraName: n.cameraName,
+                    category: n.category,
+                    label: n.label,
+                    icon: n.icon,
+                    prefix,
+                    eventId: n.id,
+                    events: navList,
+                    eventIndex: next,
+                }, hass);
+            });
+        };
+        wrapper.querySelectorAll(`.${prefix}-nav-btn`).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                stepNav(Number(btn.dataset.nav));
+            });
+        });
         const escHandler = (ev) => {
             if (ev.key === 'Escape') this.closePopup(wrapper, overlayClass, popstateHandler, escHandler);
+            // Skip nav when the feedback-detail flow is open on top of the popup.
+            if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && !document.querySelector(`.${prefix}-feedback-detail-overlay`)) {
+                stepNav(ev.key === 'ArrowRight' ? 1 : -1);
+            }
         };
         document.addEventListener('keydown', escHandler);
         wrapper._escHandler = escHandler;
@@ -993,13 +1068,18 @@ export class BaseLLMVisionCard extends HTMLElement {
         const overlay = wrapper.querySelector(`.${overlayClass}`);
         overlay.classList.remove('show');
         overlay.addEventListener('transitionend', () => {
-            if (wrapper._escHandler) document.removeEventListener('keydown', wrapper._escHandler);
-            try {
-                document.body.removeChild(wrapper);
-            } catch (err) {
-                // already removed
-            }
+            this._removePopup(wrapper, overlayClass, popstateHandler, escHandler);
         }, { once: true });
+    }
+
+    _removePopup(wrapper, overlayClass, popstateHandler, escHandler) {
+        if (wrapper._escHandler) document.removeEventListener('keydown', wrapper._escHandler);
+        else if (escHandler) document.removeEventListener('keydown', escHandler);
+        try {
+            document.body.removeChild(wrapper);
+        } catch (err) {
+            // already removed
+        }
         if (history.state && history.state.popupOpen) {
             history.replaceState(null, '');
         }
