@@ -245,12 +245,13 @@ export class LLMVisionPreviewCard extends BaseLLMVisionCard {
                 <div class="preview-event-title">${event.title}</div>
             `;
         container.addEventListener('click', () => {
-            this.resolveKeyFrame(hass, event.keyFrameFull || event.keyFrame).then(url => {
+            Promise.all([this.resolveKeyFrame(hass, event.keyFrame), this.resolveKeyFrame(hass, event.keyFrameFull || event.keyFrame)]).then(([url, fullUrl]) => {
                 this.showPopup({
                     event: event.title,
                     summary: event.description,
                     startTime: event.startTime,
                     keyFrame: url,
+                    keyFrameFullUrl: fullUrl,
                     cameraName: event.cameraName,
                     category: event.category,
                     label: event.label,

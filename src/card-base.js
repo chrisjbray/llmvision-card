@@ -233,7 +233,7 @@ export class BaseLLMVisionCard extends HTMLElement {
         return { bgColorRgba, iconColorRgba };
     }
 
-    showPopup({ event, summary, startTime, keyFrame, cameraName, category, label, icon, prefix, eventId, events, eventIndex }, hassArg) {
+    showPopup({ event, summary, startTime, keyFrame, keyFrameFullUrl, cameraName, category, label, icon, prefix, eventId, events, eventIndex }, hassArg) {
         const hass = hassArg || this.hass;
         // ponytail: index-based nav, not id lookup; the list order is the nav order
         const navList = Array.isArray(events) ? events : null;
@@ -257,6 +257,8 @@ export class BaseLLMVisionCard extends HTMLElement {
         const normalize = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
         const shouldShowCategory = Boolean(category && !(label && normalize(label) === normalize(category)));
         const hasSnapshot = typeof keyFrame === 'string' ? keyFrame.trim().length > 0 : Boolean(keyFrame);
+        // ponytail: no separate full file, no button; same url, nothing to open
+        const hasFullRes = Boolean(keyFrameFullUrl) && keyFrameFullUrl !== keyFrame;
 
         const htmlBlock = `
                 <div>
@@ -310,6 +312,7 @@ export class BaseLLMVisionCard extends HTMLElement {
                         </div>
                     </div>
                     <img src="${keyFrame}" alt="Event Snapshot" onerror="this.style.display='none'">
+                    ${hasFullRes ? `<a href="${keyFrameFullUrl}" target="_blank" rel="noopener" class="${prefix}-full-link">Open full resolution</a>` : ''}
                     <p class="summary">${summary}</p>
                     ${navList && navList.length > 1 ? `
                     <div class="${prefix}-nav-row">
@@ -439,6 +442,13 @@ export class BaseLLMVisionCard extends HTMLElement {
                         height: auto;
                         border-radius: calc(var(--ha-card-border-radius, 25px) - 10px);
                         margin-top: 10px;
+                    }
+                    .${prefix}-full-link {
+                        display: inline-block;
+                        margin-top: 8px;
+                        color: var(--primary-color);
+                        text-decoration: none;
+                        font-size: var(--ha-font-size-m, 14px);
                     }
                     .${contentClass} .summary {
                         color: var(--secondary-text-color);
@@ -580,7 +590,7 @@ export class BaseLLMVisionCard extends HTMLElement {
             if (next < 0 || next >= navList.length) return;
             const n = navList[next];
             const seq = ++navSeq;
-            this.resolveKeyFrame(hass, n.keyFrameFull || n.keyFrame).then(url => {
+            Promise.all([this.resolveKeyFrame(hass, n.keyFrame), this.resolveKeyFrame(hass, n.keyFrameFull || n.keyFrame)]).then(([url, fullUrl]) => {
                 if (seq !== navSeq) return;
                 // ponytail: remove the old wrapper at once; closePopup waits
                 // for the fade, which stacks a popup per step
@@ -590,6 +600,7 @@ export class BaseLLMVisionCard extends HTMLElement {
                     summary: n.description,
                     startTime: n.startTime,
                     keyFrame: url,
+                    keyFrameFullUrl: fullUrl,
                     cameraName: n.cameraName,
                     category: n.category,
                     label: n.label,
