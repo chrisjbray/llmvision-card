@@ -108,6 +108,7 @@ export class BaseLLMVisionCard extends HTMLElement {
                     category: item.category || '',
                     label: item.label || '',
                     keyFrame: (item.key_frame || ''),
+                    keyFrameFull: (item.key_frame_full || item.key_frame || ''),
                     cameraName: cameraFriendlyName,
                     startTime: item.start || null,
                     endTime: item.end || null,
@@ -579,7 +580,7 @@ export class BaseLLMVisionCard extends HTMLElement {
             if (next < 0 || next >= navList.length) return;
             const n = navList[next];
             const seq = ++navSeq;
-            this.resolveKeyFrame(hass, n.keyFrame).then(url => {
+            this.resolveKeyFrame(hass, n.keyFrameFull || n.keyFrame).then(url => {
                 if (seq !== navSeq) return;
                 // ponytail: remove the old wrapper at once; closePopup waits
                 // for the fade, which stacks a popup per step

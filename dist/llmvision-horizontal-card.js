@@ -1,4 +1,4 @@
-import{i as e}from"./assets/card-base-D756Owm-.js";import{i as t,n,o as r,t as i}from"./assets/lit-CkrrQ8jA.js";e(),i();var a=class extends n{static get properties(){return{_config:{type:Object}}}setConfig(e){this._config=e||{}}render(){if(!this._config)return t`<div>Please configure the card.</div>`;let e=this._getSchema().slice(0,2),n=this._getSchema().slice(2,7),r=this._getSchema().slice(7,7),i=this._getSchema().slice(7);return t`
+import{i as e}from"./assets/card-base-BJBBbTJK.js";import{i as t,n,o as r,t as i}from"./assets/lit-CkrrQ8jA.js";e(),i();var a=class extends n{static get properties(){return{_config:{type:Object}}}setConfig(e){this._config=e||{}}render(){if(!this._config)return t`<div>Please configure the card.</div>`;let e=this._getSchema().slice(0,2),n=this._getSchema().slice(2,7),r=this._getSchema().slice(7,7),i=this._getSchema().slice(7);return t`
             <style>
                 .card-content {
                     display: flex;
