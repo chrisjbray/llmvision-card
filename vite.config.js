@@ -20,6 +20,11 @@ export default defineConfig({
             },
             output: {
                 entryFileNames: "[name].js",
+                // ponytail: stable asset names, no content hash. A hashed rename
+                // 404s any cached entry chunk that imports the old name, and the
+                // whole card then dies as "Configuration Error" (2026-09-12).
+                // HACS cache-busts via the resource ?hacstag query instead.
+                chunkFileNames: "assets/[name].js",
                 format: "es",
                 // ponytail: card-base.js is imported by all entries; without
                 // manualChunks each entry inlines its own stale copy of
